@@ -354,8 +354,8 @@ async def get_paper(pid: str, _=Depends(current_user)):
 
 
 @api.get("/papers/{pid}/file")
-async def paper_file(pid: str, request: Request, download: int = 0, auth: Optional[str] = None):
-    await user_from_token(extract_token(request) or auth)
+async def paper_file(pid: str, request: Request, download: int = 0):
+    await user_from_token(extract_token(request))
     doc = await db.papers.find_one({"_id": oid(pid), "is_deleted": False})
     if not doc:
         raise HTTPException(404, "Paper not found")
@@ -628,7 +628,10 @@ async def del_my_event(eid: str, user=Depends(current_user)):
 async def add_exam(body: ExamIn, _=Depends(admin_user)):
     if body.exam_type not in EXAM_TYPES:
         raise HTTPException(400, "Invalid exam type")
-    date.fromisoformat(body.date)
+    try:
+        date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(400, "Invalid date")
     doc = body.model_dump()
     r = await db.exams.insert_one(doc)
     doc["_id"] = r.inserted_id
