@@ -1,0 +1,163 @@
+{
+  "brand": {
+    "name": "AcademiaHub Smart Campus",
+    "tagline": "The Ultimate Student Portal & Question Paper Repository",
+    "archetype": "High-Performance Academic Command Center",
+    "theme": "Dual Theme (Dark Obsidian Navy default / Crisp Academic Light)"
+  },
+  "typography": {
+    "heading_font": "Plus Jakarta Sans, sans-serif",
+    "body_font": "DM Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "font_imports_css": "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');",
+    "rules": [
+      "Headings MUST use 'Plus Jakarta Sans' with tight letter spacing (tracking-tight or tracking-tighter). NEVER use Inter for titles.",
+      "Body text MUST use 'DM Sans' with relaxed line height (leading-relaxed).",
+      "Codes, Subject Codes (e.g., CS8391), Paper IDs and Dates MUST use 'JetBrains Mono'.",
+      "H1 ceiling is text-4xl sm:text-5xl lg:text-6xl with font-extrabold.",
+      "Labels & Badges MUST be uppercase with wider tracking (tracking-wider or tracking-widest text-xs font-semibold)."
+    ]
+  },
+  "colors": {
+    "light_mode": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "surface_hover": "#F1F5F9",
+      "border": "#E2E8F0",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_muted": "#64748B",
+      "primary": "#2563EB",
+      "primary_hover": "#1D4ED8",
+      "primary_subtle": "#EFF6FF",
+      "accent_amber": "#D97706",
+      "accent_emerald": "#059669",
+      "accent_rose": "#E11D48",
+      "accent_violet": "#7C3AED"
+    },
+    "dark_mode": {
+      "background": "#090D16",
+      "surface": "#0F172A",
+      "surface_hover": "#1E293B",
+      "border": "#1E293B",
+      "text_primary": "#F8FAFC",
+      "text_secondary": "#94A3B8",
+      "text_muted": "#64748B",
+      "primary": "#3B82F6",
+      "primary_hover": "#60A5FA",
+      "primary_subtle": "#1E293B",
+      "accent_amber": "#F59E0B",
+      "accent_emerald": "#10B981",
+      "accent_rose": "#F43F5E",
+      "accent_violet": "#8B5CF6"
+    },
+    "department_theme_badges": {
+      "IT": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      "CSE": "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      "ECE": "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      "EEE": "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      "Mechanical": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      "Civil": "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+    },
+    "exam_type_badges": {
+      "Internal 1": "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      "Internal 2": "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30",
+      "Internal 3": "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30",
+      "Model Exam": "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+      "Practical Exam": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      "Semester Exam": "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30"
+    },
+    "contrast_rules": [
+      "Never use pure black #000000 or plain transparent background without blur backdrop.",
+      "All text on dark backgrounds MUST have a minimum 4.5:1 APCA contrast ratio.",
+      "Interactive states MUST explicitly define text colors, e.g., hover:bg-blue-600 hover:text-white.",
+      "FORBIDDEN COLORS: Do NOT use #7351B7 or #1B93A4."
+    ]
+  },
+  "layout_and_navigation": {
+    "navigation_structure": {
+      "desktop": "Top fixed navbar with glassmorphism blur (backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b), containing Logo, Search Trigger, Theme Toggle, Bookmark Quick Drawer, Admin Button, and User Profile menu.",
+      "mobile": "Sticky glass header top + Fixed Floating Bottom Navigation Bar (Home, Papers Hub, Timetable, Planner, Analytics, Admin if role=admin) with active pill indicator.",
+      "layout_wrapper": "Max width container (max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6), responsive padding."
+    },
+    "bento_grid_patterns": {
+      "home_dashboard": "Tetris Grid: Hero welcome widget (col-span-full lg:col-span-8), Quick Stats (col-span-4), Upcoming Exams Widget (col-span-4), Recent Question Papers Carousel (col-span-8), Quick Action Dock.",
+      "question_paper_hub": "Multi-tier Drilldown Matrix: Top Breadcrumbs & Filter Bar -> Department Cards Grid (6 cards with custom gradients and icons) -> Year & Semester Selector Tabs -> Subject Cards Grid -> Exam Type Pills & Year Chips -> Paper Grid Cards with Quick Action Bar."
+    }
+  },
+  "key_features_design": {
+    "question_paper_hub": {
+      "drilldown_hierarchy": "Department (IT, CSE, ECE, EEE, Mechanical, Civil) -> Academic Year (e.g. 2025-2026) -> Class/Year (1st Year, 2nd Year, 3rd Year, 4th Year) -> Semester (Sem 1 to Sem 8) -> Subject (e.g. DBMS, OS, AI, Networks) -> Exam Type (Internal 1, Internal 2, Internal 3, Model Exam, Practical Exam, Semester Exam) -> Exam Year (2025, 2024, 2023...) -> Paper Document Card",
+      "paper_card_elements": "Subject code badge, exam type pill, clearly highlighted EXAM YEAR tag (e.g. '2025'), page count, file type badge (PDF/Image), solution included toggle, view preview button, instant download button, bookmark toggle button.",
+      "preview_modal": "Fullscreen or high-density Dialog displaying mock PDF viewer with zoom controls, page navigator, paper details sidebar, download button, print button, and related papers recommendation."
+    },
+    "smart_timetable": {
+      "design": "Day-by-day interactive horizontal schedule rail (Mon-Sat) with ongoing class countdown, room allocation badges, faculty info, and period status pills (Upcoming, In Progress, Completed)."
+    },
+    "study_planner": {
+      "design": "Kanban & Calendar hybrid with task priorities (High, Medium, Low), target dates, exam countdown badges, progress indicators, and task creation dialog."
+    },
+    "exam_schedule": {
+      "design": "Timeline view with countdown timers (Days, Hours, Minutes), hall ticket location, syllabus topics coverage checklist, and exam guidelines toggle."
+    },
+    "student_progress": {
+      "design": "Recharts visual dashboard showing Subject GPA/Marks breakdown, Semester performance trend charts, and strengths/weaknesses breakdown."
+    },
+    "admin_paper_upload": {
+      "design": "Non-generic admin studio card modal/page featuring step-by-step drag-and-drop file upload (PDF/JPG/PNG), metadata selectors (Department, Academic Year, Class/Year, Semester, Subject, Exam Type, Exam Year, Regulations), and paper approval manager."
+    }
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1741699428220-65f37f3fbbcb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwbGlicmFyeXxlbnwwfHx8fDE3OTEzNTMxMTV8MA&ixlib=rb-4.1.0&q=85",
+      "category": "Hero Banner Background / Library Study",
+      "description": "Student studying in a modern academic library surrounded by books and laptop."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1696395050055-eb7a315bb1cb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHw0fHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwbGlicmFyeXxlbnwwfHx8fDE3OTEzNTMxMTV8MA&ixlib=rb-4.1.0&q=85",
+      "category": "Campus / Department Visual Header",
+      "description": "Large high-ceiling university library with bright illumination."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1553448539-f6063db586a4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwzfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwbGlicmFyeXxlbnwwfHx8fDE3OTEzNTMxMTV8MA&ixlib=rb-4.1.0&q=85",
+      "category": "Student Collaboration Scene",
+      "description": "Students collaborating in a clean contemporary campus area."
+    }
+  ],
+  "testing_and_accessibility": {
+    "data_testid_convention": "All interactive elements MUST have kebab-case data-testid attributes.",
+    "required_test_ids": [
+      "data-testid='app-header'",
+      "data-testid='theme-toggle-button'",
+      "data-testid='global-search-input'",
+      "data-testid='login-submit-button'",
+      "data-testid='dept-card-it'",
+      "data-testid='dept-card-cse'",
+      "data-testid='dept-card-ece'",
+      "data-testid='dept-card-eee'",
+      "data-testid='dept-card-mech'",
+      "data-testid='dept-card-civil'",
+      "data-testid='year-filter-select'",
+      "data-testid='semester-tab-list'",
+      "data-testid='exam-type-filter-chip'",
+      "data-testid='exam-year-badge'",
+      "data-testid='paper-card-preview-button'",
+      "data-testid='paper-card-download-button'",
+      "data-testid='paper-card-bookmark-button'",
+      "data-testid='paper-preview-modal'",
+      "data-testid='admin-upload-paper-button'",
+      "data-testid='admin-paper-file-input'",
+      "data-testid='mobile-bottom-nav'",
+      "data-testid='planner-add-task-button'",
+      "data-testid='timetable-day-tab'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Note: Build all React components using .js files since the project setup relies on JavaScript.",
+    "Always wrap interactive elements with proper framer-motion micro-animations (whileHover={{ scale: 1.02 }}, whileTap={{ scale: 0.98 }}).",
+    "Ensure dark mode and light mode toggle works seamlessly using next-themes or a class-based documentElement toggle.",
+    "Implement realistic mock PDF/Image rendering inside the Paper Preview dialog with full sample question paper text content (Header, Subject Code, Time: 3 Hrs, Marks: 100, Part A, Part B, Part C questions).",
+    "Include local storage persistence for Bookmarks, Study Planner tasks, and User authentication state.",
+    "Avoid standard administrative generic tables. Use custom styled cards, status badges, clean visual progress bars, and rich micro-details."
+  ]
+}
