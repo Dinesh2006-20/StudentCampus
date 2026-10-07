@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { MapPin, User2, FlaskConical, Coffee } from "lucide-react";
-import { get } from "@/lib/api";
+import { toast } from "sonner";
+import { MapPin, User2, FlaskConical, Coffee, Plus, Trash2 } from "lucide-react";
+import { api, get, errMsg } from "@/lib/api";
+import { MyClassDialog } from "@/components/MyScheduleDialogs";
 import { useAuth } from "@/context/AuthContext";
 import { DeptSemPicker } from "@/components/DeptSemPicker";
 import { PageHeader, Empty } from "@/components/PageHeader";
@@ -22,16 +24,22 @@ export default function Timetable() {
   const today = todayName();
   const [day, setDay] = useState(DAYS.includes(today) ? today : "Monday");
   const [view, setView] = useState("day");
+  const [add, setAdd] = useState(false);
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["timetable"] });
+  const del = async (x) => { try { await api.delete(`/timetable/mine/${x.id}`); toast.success("Removed"); refresh(); } catch (e) { toast.error(errMsg(e)); } };
   const { data = [] } = useQuery({ queryKey: ["timetable", dept, sem], queryFn: () => get("/timetable", { dept, semester: sem }), enabled: !!dept && !!sem });
-  const list = data.filter((x) => x.day === day);
+  const list = data.filter((x) => x.day === day).sort((a, b) => a.start.localeCompare(b.start));
   const n = nowMin();
   const status = (x) => (day !== today ? "next" : n >= toMin(x.end) ? "done" : n >= toMin(x.start) ? "live" : "next");
-  const slots = [...new Set(data.map((x) => x.start))].sort();
+  const slots = [...new Set(data.filter((x) => !x.mine).map((x) => x.start))].sort();
 
   return (
     <div data-testid="timetable-page">
       <PageHeader eyebrow="Smart Timetable" title="Your week, period by period" sub="Live status for today's classes, rooms and labs."
-        right={<DeptSemPicker dept={dept} sem={sem} onDept={setDept} onSem={setSem} />} />
+        right={<div className="flex gap-2 flex-wrap"><DeptSemPicker dept={dept} sem={sem} onDept={setDept} onSem={setSem} />
+          <button onClick={() => setAdd(true)} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2" data-testid="timetable-add-mine-button"><Plus className="h-4 w-4" />My slot</button></div>} />
+      <MyClassDialog open={add} setOpen={setAdd} defaultDay={day} onSaved={refresh} key={day} />
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex gap-2 overflow-x-auto no-scrollbar" data-testid="timetable-day-tabs">
           {DAYS.map((d) => (
@@ -61,10 +69,11 @@ export default function Timetable() {
                   <div className={cn("surface p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3", st === "live" && "border-primary/50", st === "done" && "opacity-60")}>
                     <div className="sm:hidden font-mono text-xs text-muted-foreground">{x.start} – {x.end}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{x.subject_code}</span>{x.kind === "Lab" && <FlaskConical className="h-3.5 w-3.5 text-emerald-500" />}<span className="text-[11px] uppercase tracking-wider text-muted-foreground">{x.kind}</span></div>
+                      <div className="flex items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{x.subject_code}</span>{x.kind === "Lab" && <FlaskConical className="h-3.5 w-3.5 text-emerald-500" />}<span className="text-[11px] uppercase tracking-wider text-muted-foreground">{x.kind}</span>{x.mine && <span className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400">Mine</span>}</div>
                       <div className="font-display font-bold text-lg leading-snug">{x.subject_name}</div>
-                      <div className="flex gap-4 text-xs text-muted-foreground mt-1.5"><span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{x.room}</span><span className="inline-flex items-center gap-1"><User2 className="h-3 w-3" />{x.faculty}</span></div>
+                      <div className="flex gap-4 text-xs text-muted-foreground mt-1.5">{x.room && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{x.room}</span>}{x.faculty && <span className="inline-flex items-center gap-1"><User2 className="h-3 w-3" />{x.faculty}</span>}</div>
                     </div>
+                    {x.mine && <button onClick={() => del(x)} className="self-start sm:self-center text-muted-foreground hover:text-destructive" data-testid={`timetable-delete-mine-${x.id}`} aria-label="Delete"><Trash2 className="h-4 w-4" /></button>}
                     <span className={cn("self-start sm:self-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider", STATUS[st][1])}>{STATUS[st][0]}</span>
                   </div>
                 </motion.div>
@@ -80,7 +89,7 @@ export default function Timetable() {
               {DAYS.map((d) => (
                 <tr key={d} className={cn("border-t border-border", d === today && "bg-primary/5")}>
                   <td className="p-3 font-semibold">{d.slice(0, 3)}</td>
-                  {slots.map((s) => { const x = data.find((e) => e.day === d && e.start === s); return <td key={s} className="p-2"><div className={cn("rounded-lg px-2 py-1.5 text-xs", x ? (x.kind === "Lab" ? "bg-emerald-500/10" : "bg-secondary") : "")}>{x ? <><div className="font-mono font-semibold">{x.subject_code}</div><div className="text-muted-foreground truncate max-w-[120px]">{x.subject_name}</div></> : "—"}</div></td>; })}
+                  {slots.map((s) => { const x = data.find((e) => !e.mine && e.day === d && e.start === s); return <td key={s} className="p-2"><div className={cn("rounded-lg px-2 py-1.5 text-xs", x ? (x.kind === "Lab" ? "bg-emerald-500/10" : "bg-secondary") : "")}>{x ? <><div className="font-mono font-semibold">{x.subject_code}</div><div className="text-muted-foreground truncate max-w-[120px]">{x.subject_name}</div></> : "—"}</div></td>; })}
                 </tr>
               ))}
             </tbody>

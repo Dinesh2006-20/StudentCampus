@@ -13,6 +13,7 @@ import Timetable from "@/pages/Timetable";
 import Exams from "@/pages/Exams";
 import Planner from "@/pages/Planner";
 import Progress from "@/pages/Progress";
+import AiTutor from "@/pages/AiTutor";
 import Admin from "@/pages/Admin";
 
 const Splash = () => (
@@ -51,6 +52,7 @@ function App() {
                 <Route path="/exams" element={<Exams />} />
                 <Route path="/planner" element={<Planner />} />
                 <Route path="/progress" element={<Progress />} />
+                <Route path="/ai" element={<AiTutor />} />
                 <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

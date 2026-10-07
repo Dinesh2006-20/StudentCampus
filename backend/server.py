@@ -23,7 +23,8 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from seed_data import DEPARTMENTS, EXAM_TYPES, SLOTS, DAYS, all_subjects, academic_year, exam_meta
-from pdfgen import render_paper_pdf
+from pdfgen import render_paper_pdf, extract_pdf_questions
+import ai
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -435,6 +436,7 @@ async def upload_paper(file: UploadFile = File(...), dept: str = Form(...), seme
            "semester": semester, "subject_code": subject_code, "subject_name": subj["name"], "exam_type": exam_type,
            "exam_year": exam_year, "exam_month": month, "max_marks": max_marks, "duration": duration,
            "regulation": regulation or ("R2021" if exam_year >= 2021 else "R2017"), "pages": None,
+           "questions": extract_pdf_questions(data) if ext == "pdf" else [],
            "file_path": res["path"], "content_type": MIME[ext], "original_filename": file.filename, "size": len(data),
            "tags": subject_tags(subj["name"]), "has_solution": has_solution, "downloads": 0, "views": 0, "is_deleted": False, "uploaded_by": user["email"],
            "created_at": datetime.now(timezone.utc).isoformat()}
@@ -480,7 +482,7 @@ async def admin_stats(_=Depends(admin_user)):
             "papers": await db.papers.count_documents({"is_deleted": False}),
             "uploaded": await db.papers.count_documents({"is_deleted": False, "file_path": {"$ne": None}}),
             "subjects": await db.subjects.count_documents({}),
-            "exams": await db.exams.count_documents({}),
+            "exams": await db.exams.count_documents({"user_id": {"$exists": False}}),
             "recent_uploads": [paper_out(u) for u in uploads]}
 
 
@@ -519,9 +521,41 @@ class TimetableIn(BaseModel):
 
 
 @api.get("/timetable")
-async def timetable(dept: str, semester: int, _=Depends(current_user)):
-    docs = await db.timetable.find({"dept": dept, "semester": semester}).sort("start", 1).to_list(200)
-    return [out(BaseDocument, d) for d in docs]
+async def timetable(dept: str, semester: int, user=Depends(current_user)):
+    docs = await db.timetable.find({"$or": [{"dept": dept, "semester": semester, "user_id": {"$exists": False}},
+                                            {"user_id": user["id"]}]}).sort("start", 1).to_list(400)
+    return [{**out(BaseDocument, d), "mine": d.get("user_id") == user["id"]} for d in docs]
+
+
+class MyClassIn(BaseModel):
+    day: str
+    start: str
+    end: str
+    subject_name: str = Field(min_length=1, max_length=100)
+    subject_code: str = ""
+    room: str = ""
+    faculty: str = ""
+    kind: str = "Personal"
+
+
+@api.post("/timetable/mine")
+async def add_my_class(body: MyClassIn, user=Depends(current_user)):
+    if body.day not in DAYS:
+        raise HTTPException(400, "Invalid day")
+    if body.end <= body.start:
+        raise HTTPException(400, "End time must be after start time")
+    doc = {**body.model_dump(), "user_id": user["id"]}
+    r = await db.timetable.insert_one(doc)
+    doc["_id"] = r.inserted_id
+    return {**out(BaseDocument, doc), "mine": True}
+
+
+@api.delete("/timetable/mine/{eid}")
+async def del_my_class(eid: str, user=Depends(current_user)):
+    r = await db.timetable.delete_one({"_id": oid(eid), "user_id": user["id"]})
+    if not r.deleted_count:
+        raise HTTPException(404, "Entry not found")
+    return {"ok": True}
 
 
 @api.post("/admin/timetable")
@@ -554,9 +588,40 @@ class ExamIn(BaseModel):
 
 
 @api.get("/exams")
-async def exams(dept: str, semester: int, _=Depends(current_user)):
-    docs = await db.exams.find({"dept": dept, "semester": semester}).sort([("date", 1), ("start_time", 1)]).to_list(200)
-    return [out(BaseDocument, d) for d in docs]
+async def exams(dept: str, semester: int, user=Depends(current_user)):
+    docs = await db.exams.find({"$or": [{"dept": dept, "semester": semester, "user_id": {"$exists": False}},
+                                        {"user_id": user["id"]}]}).sort([("date", 1), ("start_time", 1)]).to_list(400)
+    return [{**out(BaseDocument, d), "mine": d.get("user_id") == user["id"]} for d in docs]
+
+
+class MyEventIn(BaseModel):
+    subject_name: str = Field(min_length=1, max_length=120)
+    exam_type: str = "Personal"
+    date: str
+    start_time: str
+    end_time: str
+    hall: str = ""
+    syllabus: List[str] = []
+
+
+@api.post("/exams/mine")
+async def add_my_event(body: MyEventIn, user=Depends(current_user)):
+    try:
+        date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(400, "Invalid date")
+    doc = {**body.model_dump(), "subject_code": "", "user_id": user["id"]}
+    r = await db.exams.insert_one(doc)
+    doc["_id"] = r.inserted_id
+    return {**out(BaseDocument, doc), "mine": True}
+
+
+@api.delete("/exams/mine/{eid}")
+async def del_my_event(eid: str, user=Depends(current_user)):
+    r = await db.exams.delete_one({"_id": oid(eid), "user_id": user["id"]})
+    if not r.deleted_count:
+        raise HTTPException(404, "Event not found")
+    return {"ok": True}
 
 
 @api.post("/admin/exams")
@@ -661,7 +726,7 @@ async def del_mark(mid: str, user=Depends(current_user)):
 async def dashboard(user=Depends(current_user)):
     dept, sem = user.get("dept") or "IT", user.get("semester") or 1
     today = datetime.now(timezone.utc).date().isoformat()
-    upcoming = await db.exams.find({"dept": dept, "semester": sem, "date": {"$gte": today}}).sort("date", 1).limit(4).to_list(4)
+    upcoming = await db.exams.find({"date": {"$gte": today}, "$or": [{"dept": dept, "semester": sem, "user_id": {"$exists": False}}, {"user_id": user["id"]}]}).sort([("date", 1), ("start_time", 1)]).limit(4).to_list(4)
     tasks_pending = await db.tasks.count_documents({"user_id": user["id"], "status": {"$ne": "done"}})
     m = await db.marks.find({"user_id": user["id"]}).to_list(1000)
     avg = round(sum(x["score"] / x["max_score"] for x in m) / len(m) * 100, 1) if m else None
@@ -796,5 +861,6 @@ async def root():
 
 
 app.include_router(api)
+app.include_router(ai.build_router(db, current_user))
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
                    allow_methods=["*"], allow_headers=["*"])

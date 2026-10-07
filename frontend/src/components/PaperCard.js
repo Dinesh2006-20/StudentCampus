@@ -5,7 +5,7 @@ import { EXAM_STYLE, DEPT_META, ordinal } from "@/lib/campus";
 import { cn } from "@/lib/utils";
 
 export const ExamPill = ({ type, className }) => (
-  <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider", EXAM_STYLE[type], className)}>
+  <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider", EXAM_STYLE[type] || "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30", className)}>
     {type}
   </span>
 );

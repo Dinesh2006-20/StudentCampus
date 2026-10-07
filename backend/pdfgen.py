@@ -1,4 +1,5 @@
 import io
+import re
 import random
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -24,9 +25,43 @@ def _topics(name):
     return [f"{name} {s}" if i % 2 else f"{s.title()} of {name}" for i, s in enumerate(TOPIC_SUFFIX)]
 
 
-def render_paper_pdf(p: dict) -> bytes:
+def paper_questions(p: dict):
+    """Deterministic question list for a generated paper: [(part, marks, text)]."""
     rnd = random.Random(p["id"])
     topics = _topics(p["subject_name"])
+    if p["exam_type"] == "Practical Exam":
+        return [("Practical", 100, f"Implement and demonstrate {rnd.choice(topics)}; record observations and results.") for _ in range(8)]
+    full = p.get("max_marks", 100) == 100
+    n_a, n_b = (10, 5) if full else (5, 3)
+    b_marks = 13 if full else 10
+    qs = [("A", 2, rnd.choice(STEMS_SHORT).format(t=rnd.choice(topics))) for _ in range(n_a)]
+    for _ in range(n_b):
+        qs.append(("B", b_marks, rnd.choice(STEMS_LONG).format(t=rnd.choice(topics))))
+        qs.append(("B", b_marks, rnd.choice(STEMS_LONG).format(t=rnd.choice(topics))))
+    if full:
+        qs.append(("C", 15, rnd.choice(STEMS_LONG).format(t=rnd.choice(topics))))
+    return qs
+
+
+Q_LINE = re.compile(r"^\s*(?:Q\.?\s*)?\d{1,2}\s*[\.\)]\s*(?:\(?[ab]\)\s*)?(.{12,})$", re.I)
+
+
+def extract_pdf_questions(data: bytes):
+    from pypdf import PdfReader
+    try:
+        text = "\n".join((pg.extract_text() or "") for pg in PdfReader(io.BytesIO(data)).pages[:12])
+    except Exception:
+        return []
+    out = []
+    for ln in text.splitlines():
+        m = Q_LINE.match(ln)
+        if m:
+            out.append(("", None, re.sub(r"\(\s*\d+\s*\)\s*$", "", m.group(1)).strip()))
+    return out[:80]
+
+
+def render_paper_pdf(p: dict) -> bytes:
+    qs = paper_questions(p)
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
@@ -44,7 +79,7 @@ def render_paper_pdf(p: dict) -> bytes:
     watermark()
     y = h - 50
     c.setFont("Helvetica-Bold", 9)
-    c.drawString(40, y, f"Reg. No: ________________")
+    c.drawString(40, y, "Reg. No: ________________")
     c.drawRightString(w - 40, y, f"Paper ID: {p['id'][-8:].upper()}")
     y -= 28
     c.setFont("Helvetica-Bold", 14)
@@ -80,29 +115,32 @@ def render_paper_pdf(p: dict) -> bytes:
             c.drawString(indent + (14 if i else 0), y, part)
             y -= 15
 
-    full = p.get("max_marks", 100) == 100
     if p["exam_type"] == "Practical Exam":
         line("Answer any ONE experiment allotted by lot.", "Helvetica-Oblique", 9)
-        for i in range(1, 9):
-            line(f"{i}. Implement and demonstrate {rnd.choice(topics)}; record observations and results.")
+        for i, (_, _, q) in enumerate(qs, 1):
+            line(f"{i}. {q}")
     else:
-        n_a, n_b = (10, 5) if full else (5, 3)
-        b_marks = 13 if full else 10
-        line(f"PART A  ({n_a} x 2 = {n_a * 2} Marks)", "Helvetica-Bold", 11)
+        a = [q for q in qs if q[0] == "A"]
+        b = [q for q in qs if q[0] == "B"]
+        cc = [q for q in qs if q[0] == "C"]
+        bm = b[0][1]
+        line(f"PART A  ({len(a)} x 2 = {len(a) * 2} Marks)", "Helvetica-Bold", 11)
         line("Answer ALL questions.", "Helvetica-Oblique", 9)
-        for i in range(1, n_a + 1):
-            line(f"{i}. " + rnd.choice(STEMS_SHORT).format(t=rnd.choice(topics)))
+        for i, q in enumerate(a, 1):
+            line(f"{i}. {q[2]}")
         y -= 8
-        line(f"PART B  ({n_b} x {b_marks} = {n_b * b_marks} Marks)", "Helvetica-Bold", 11)
+        nb = len(b) // 2
+        line(f"PART B  ({nb} x {bm} = {nb * bm} Marks)", "Helvetica-Bold", 11)
         line("Answer ALL questions, choosing either (a) or (b).", "Helvetica-Oblique", 9)
-        for i in range(n_a + 1, n_a + n_b + 1):
-            line(f"{i}. (a) " + rnd.choice(STEMS_LONG).format(t=rnd.choice(topics)) + f"  ({b_marks})")
+        for j in range(nb):
+            n = len(a) + j + 1
+            line(f"{n}. (a) {b[2 * j][2]}  ({bm})")
             line("(OR)", "Helvetica-Bold", 9, 280)
-            line(f"    (b) " + rnd.choice(STEMS_LONG).format(t=rnd.choice(topics)) + f"  ({b_marks})")
-        if full:
+            line(f"    (b) {b[2 * j + 1][2]}  ({bm})")
+        if cc:
             y -= 8
             line("PART C  (1 x 15 = 15 Marks)", "Helvetica-Bold", 11)
-            line(f"{n_a + n_b + 1}. " + rnd.choice(STEMS_LONG).format(t=rnd.choice(topics)) + "  (15)")
+            line(f"{len(a) + nb + 1}. {cc[0][2]}  (15)")
     y -= 10
     line("*** ALL THE BEST ***", "Helvetica-Bold", 9, w / 2 - 50)
     c.save()

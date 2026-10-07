@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { MapPin, Clock3, History, CalendarX } from "lucide-react";
+import { toast } from "sonner";
+import { MapPin, Clock3, History, CalendarX, Plus, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { get } from "@/lib/api";
+import { api, get, errMsg } from "@/lib/api";
+import { MyEventDialog } from "@/components/MyScheduleDialogs";
 import { useAuth } from "@/context/AuthContext";
 import { DeptSemPicker } from "@/components/DeptSemPicker";
 import { PageHeader, Empty } from "@/components/PageHeader";
@@ -14,7 +16,7 @@ import { isoToday, yearOfSem } from "@/lib/campus";
 
 const toIso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-const ExamRow = ({ e, i, dept, sem }) => {
+const ExamRow = ({ e, i, dept, sem, onDelete }) => {
   const c = useCountdown(e.date, e.start_time);
   const past = e.date < isoToday();
   const dt = new Date(`${e.date}T00:00:00`);
@@ -27,17 +29,19 @@ const ExamRow = ({ e, i, dept, sem }) => {
         <div className="text-[10px] text-muted-foreground">{dt.toLocaleDateString(undefined, { weekday: "short" })}</div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap"><ExamPill type={e.exam_type} /><span className="font-mono text-xs text-muted-foreground">{e.subject_code}</span></div>
+        <div className="flex items-center gap-2 flex-wrap"><ExamPill type={e.exam_type} /><span className="font-mono text-xs text-muted-foreground">{e.subject_code}</span>{e.mine && <span className="text-[10px] font-semibold uppercase tracking-wider rounded-md px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400">Mine</span>}</div>
         <div className="font-display font-bold text-lg mt-1.5 leading-snug">{e.subject_name}</div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1.5">
           <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{e.start_time}–{e.end_time}</span>
-          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{e.hall}</span>
+          {e.hall && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{e.hall}</span>}
         </div>
         <div className="flex flex-wrap gap-1.5 mt-2">{e.syllabus?.map((s) => <span key={s} className="text-[11px] rounded-md bg-secondary px-2 py-0.5">{s}</span>)}</div>
-        <Link to={`/papers?dept=${dept}&year=${yearOfSem(sem)}&sem=${sem}&subject=${e.subject_code}&sname=${encodeURIComponent(e.subject_name)}&type=${encodeURIComponent(e.exam_type)}`}
+        {e.mine ? (
+          <button onClick={() => onDelete(e)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-destructive mt-3" data-testid={`exam-delete-mine-${e.id}`}><Trash2 className="h-3.5 w-3.5" />Remove</button>
+        ) : <Link to={`/papers?dept=${dept}&year=${yearOfSem(sem)}&sem=${sem}&subject=${e.subject_code}&sname=${encodeURIComponent(e.subject_name)}&type=${encodeURIComponent(e.exam_type)}`}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mt-3" data-testid={`exam-practice-${e.id}`}>
           <History className="h-3.5 w-3.5" />Practice previous {e.exam_type} papers
-        </Link>
+        </Link>}
       </div>
       {!past && c && <div className="hidden sm:block text-right font-mono shrink-0"><div className="text-3xl font-extrabold stamp leading-none">{c.d}</div><div className="text-[10px] uppercase text-muted-foreground">days</div><div className="text-xs text-muted-foreground mt-1">{c.h}h {c.m}m</div></div>}
     </motion.div>
@@ -49,6 +53,10 @@ export default function Exams() {
   const [dept, setDept] = useState(user.dept);
   const [sem, setSem] = useState(user.semester);
   const [sel, setSel] = useState();
+  const [add, setAdd] = useState(false);
+  const qc = useQueryClient();
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["exams"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); };
+  const del = async (e) => { try { await api.delete(`/exams/mine/${e.id}`); toast.success("Removed"); refresh(); } catch (x) { toast.error(errMsg(x)); } };
   const { data = [] } = useQuery({ queryKey: ["exams", dept, sem], queryFn: () => get("/exams", { dept, semester: sem }), enabled: !!dept && !!sem });
   const dates = data.map((e) => new Date(`${e.date}T00:00:00`));
   const list = sel ? data.filter((e) => e.date === toIso(sel)) : data.filter((e) => e.date >= isoToday()).concat(data.filter((e) => e.date < isoToday()));
@@ -58,7 +66,9 @@ export default function Exams() {
   return (
     <div data-testid="exams-page">
       <PageHeader eyebrow="Exam Schedule" title="Countdown to every exam" sub="Calendar, halls, syllabus and one-tap practice with past papers."
-        right={<DeptSemPicker dept={dept} sem={sem} onDept={setDept} onSem={setSem} />} />
+        right={<div className="flex gap-2 flex-wrap"><DeptSemPicker dept={dept} sem={sem} onDept={setDept} onSem={setSem} />
+          <button onClick={() => setAdd(true)} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2" data-testid="exams-add-mine-button"><Plus className="h-4 w-4" />My schedule</button></div>} />
+      <MyEventDialog open={add} setOpen={setAdd} onSaved={refresh} />
       <div className="grid lg:grid-cols-[340px_1fr] gap-6">
         <div className="space-y-4">
           {next && (
@@ -78,7 +88,7 @@ export default function Exams() {
         </div>
         <div className="space-y-3">
           {list.length === 0 ? <Empty icon={CalendarX} title="No exams on this date" sub="Underlined dates on the calendar have exams." />
-            : list.map((e, i) => <ExamRow key={e.id} e={e} i={i} dept={dept} sem={sem} />)}
+            : list.map((e, i) => <ExamRow key={e.id} e={e} i={i} dept={dept} sem={sem} onDelete={del} />)}
         </div>
       </div>
     </div>

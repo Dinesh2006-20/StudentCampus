@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
-import { Home, Library, Clock, CalendarDays, ClipboardList, LineChart, ShieldCheck, Search, Sun, Moon, Bookmark, LogOut, UserCog, LayoutGrid } from "lucide-react";
+import { Home, Library, Clock, CalendarDays, ClipboardList, LineChart, ShieldCheck, Search, Sun, Moon, Bookmark, LogOut, UserCog, LayoutGrid, Sparkles } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/papers", label: "Papers", icon: Library },
+  { to: "/ai", label: "Exam AI", icon: Sparkles },
   { to: "/timetable", label: "Timetable", icon: Clock },
   { to: "/exams", label: "Exams", icon: CalendarDays },
   { to: "/planner", label: "Planner", icon: ClipboardList },
@@ -73,7 +74,7 @@ const BottomNav = ({ onMore }) => (
   <nav className="md:hidden fixed bottom-3 inset-x-3 z-40 glass border border-border rounded-2xl shadow-2xl shadow-black/20" data-testid="mobile-bottom-nav">
     <div className="grid grid-cols-5">
       {NAV.slice(0, 4).map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} end={to === "/"} data-testid={`mobile-nav-${label.toLowerCase()}`}
+        <NavLink key={to} to={to} end={to === "/"} data-testid={`mobile-nav-${label.toLowerCase().replace(/\s/g, "-")}`}
           className={({ isActive }) => cn("relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
           {({ isActive }) => (<>
             {isActive && <motion.span layoutId="bnav" className="absolute inset-1 rounded-xl bg-primary/10" />}
@@ -121,7 +122,7 @@ export default function Layout() {
           <Logo />
           <nav className="hidden md:flex items-center gap-1 ml-4">
             {[...NAV, ...(user.role === "admin" ? [{ to: "/admin", label: "Admin", icon: ShieldCheck }] : [])].map(({ to, label }) => (
-              <NavLink key={to} to={to} end={to === "/"} data-testid={`nav-${label.toLowerCase()}`}
+              <NavLink key={to} to={to} end={to === "/"} data-testid={`nav-${label.toLowerCase().replace(/\s/g, "-")}`}
                 className={({ isActive }) => cn("relative px-3 py-2 text-sm font-medium rounded-lg transition-colors", isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
                 {({ isActive }) => (<>{isActive && <motion.span layoutId="tnav" className="absolute inset-0 rounded-lg bg-secondary" />}<span className="relative">{label}</span></>)}
               </NavLink>
